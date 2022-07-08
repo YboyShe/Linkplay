@@ -41,6 +41,7 @@ OF SUCH DAMAGE.
 #include "main.h"
 #include "gd32f307c_eval.h"
 
+
 #define arraysize                  10
 #define SET_SPI0_NSS_HIGH          gpio_bit_set(GPIOA,GPIO_PIN_8);
 #define SET_SPI0_NSS_LOW           gpio_bit_reset(GPIOA,GPIO_PIN_8);
@@ -69,6 +70,46 @@ void i2c_config(void);
 void adc_config(void);
 void nvic_configuration(void);
 void timer_config(void);
+
+
+#define ARRAY_SIZE(arr)     (sizeof(arr)/sizeof(arr[0]))
+	
+typedef struct _cmd_entry {
+    char *command;
+	uint32_t addrdata;
+//    uint32_t (*function)(uint32_t);
+//	volatile uint32_t * addr;
+} cmd_entry;
+
+cmd_entry cmd_table[] = {
+    {"system clock is                      ", 0},
+    {"AHB    clock is                      ", 0},
+    {"APB1   clock is                      ", 0},
+    {"APB2   clock is                      ", 0},
+    {"reset source / clock register        ", 0},
+    {"FMC wait state register              ", 0},
+    {"FMC unlock key register 0            ", 0},
+    {"FMC option bytes unlock key register ", 0},
+    {"FMC status register 0                ", 0},
+    {"FMC control register 0               ", 0},
+    {"FMC address register 0               ", 0},
+    {"FMC option bytes status register     ", 0},
+    {"FMC erase/program protection register", 0},
+    {"FMC unlock key register 1            ", 0},
+    {"FMC status register 1                ", 0},
+    {"FMC control register 1               ", 0},
+    {"FMC address register 1               ", 0},
+    {"FMC wait state enable register       ", 0},
+    {"FMC product ID register              ", 0},
+    {"option byte security protection      ", 0},
+    {"option byte user                     ", 0},
+    {"option byte data bit[7:0]            ", 0},
+    {"option byte write protection 0       ", 0}
+};
+
+int i;
+char *name;
+uint32_t adders;
 
 /*!
     \brief      toggle the led every 500ms
@@ -100,11 +141,8 @@ void led_spark(void)
     \param[out] none
     \retval     none
 */
-
 int main(void)
 {
-    int i;
-
     /* configure systick */
     systick_config();
     /* initilize the LED, USART and key */
@@ -124,18 +162,47 @@ int main(void)
     /* SPI config */
     spi_config();
 	
-	i2c_config();
-	adc_config();
-	timer_config();
+    i2c_config();
+    adc_config();
+    timer_config();
 	
-	nvic_configuration();
+    nvic_configuration();
     
     /* print out the clock frequency of system, AHB, APB1 and APB2 */
-    printf("\r\nCK_SYS is %d", rcu_clock_freq_get(CK_SYS));
-    printf("\r\nCK_AHB is %d", rcu_clock_freq_get(CK_AHB));
-    printf("\r\nCK_APB1 is %d", rcu_clock_freq_get(CK_APB1));
-    printf("\r\nCK_APB2 is %d", rcu_clock_freq_get(CK_APB2));
+    printf("\r\n");
+    cmd_table[ 0].addrdata = rcu_clock_freq_get(CK_SYS);
+    cmd_table[ 1].addrdata = rcu_clock_freq_get(CK_AHB);
+    cmd_table[ 2].addrdata = rcu_clock_freq_get(CK_APB1);
+    cmd_table[ 3].addrdata = rcu_clock_freq_get(CK_APB2);
+    cmd_table[ 4].addrdata = RCU_RSTSCK;
+    cmd_table[ 5].addrdata = FMC_WS;
+    cmd_table[ 6].addrdata = FMC_KEY0;
+    cmd_table[ 7].addrdata = FMC_OBKEY;
+    cmd_table[ 8].addrdata = FMC_STAT0;
+    cmd_table[ 9].addrdata = FMC_CTL0;
+    cmd_table[10].addrdata = FMC_ADDR0;
+    cmd_table[11].addrdata = FMC_OBSTAT;
+    cmd_table[12].addrdata = FMC_WP;
+    cmd_table[13].addrdata = FMC_KEY1;
+    cmd_table[14].addrdata = FMC_STAT1;
+    cmd_table[15].addrdata = FMC_CTL1;
+    cmd_table[16].addrdata = FMC_ADDR1;
+    cmd_table[17].addrdata = FMC_WSEN;
+    cmd_table[18].addrdata = FMC_PID;
+    cmd_table[19].addrdata = OB_SPC;
+    cmd_table[20].addrdata = OB_USER;
+    cmd_table[21].addrdata = OB_DATA1;
+    cmd_table[22].addrdata = OB_WP0;
 
+    for (i = 0; i < ARRAY_SIZE(cmd_table); i++)
+    {
+        name = cmd_table[i].command;
+        adders = cmd_table[i].addrdata;
+        if(i < 4) printf("%s = %d\r\n", cmd_table[i].command, cmd_table[i].addrdata);
+    else printf("%s = %08X\r\n", cmd_table[i].command, cmd_table[i].addrdata);
+        delay_1ms(10);
+    }
+    rcu_all_reset_flag_clear();
 
 
     SET_SPI0_NSS_HIGH
@@ -454,8 +521,8 @@ void timer_config(void)
 /* retarget the C library printf function to the USART */
 int fputc(int ch, FILE *f)
 {
-    usart_data_transmit(EVAL_COM0, (uint8_t)ch);
-    while(RESET == usart_flag_get(EVAL_COM0, USART_FLAG_TBE));
+    usart_data_transmit(EVAL_COM1, (uint8_t)ch);
+    while(RESET == usart_flag_get(EVAL_COM1, USART_FLAG_TBE));
 
     return ch;
 }
