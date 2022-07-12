@@ -3110,11 +3110,11 @@
                 </option>
                 <option>
                     <name>OCDynDriverList</name>
-                    <state>JLINK_ID</state>
+                    <state>CMSISDAP_ID</state>
                 </option>
                 <option>
                     <name>OCLastSavedByProductVersion</name>
-                    <state>7.40.2.8567</state>
+                    <state>9.10.1.36322</state>
                 </option>
                 <option>
                     <name>UseFlashLoader</name>
@@ -3326,7 +3326,7 @@
                 <option>
                     <name>CMSISDAPResetList</name>
                     <version>1</version>
-                    <state>10</state>
+                    <state>9</state>
                 </option>
                 <option>
                     <name>CMSISDAPHWResetDuration</name>
@@ -3346,7 +3346,7 @@
                 </option>
                 <option>
                     <name>CMSISDAPInterfaceRadio</name>
-                    <state>0</state>
+                    <state>1</state>
                 </option>
                 <option>
                     <name>CMSISDAPInterfaceCmdLine</name>

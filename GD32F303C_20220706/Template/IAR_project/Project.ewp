@@ -2131,11 +2131,11 @@
                 </option>
                 <option>
                     <name>Input description</name>
-                    <state>Automatic choice of formatter.</state>
+                    <state>Automatic choice of formatter, without multibyte support.</state>
                 </option>
                 <option>
                     <name>Output description</name>
-                    <state>Automatic choice of formatter.</state>
+                    <state>Automatic choice of formatter, without multibyte support.</state>
                 </option>
                 <option>
                     <name>GOutputBinary</name>
@@ -2189,7 +2189,7 @@
                 </option>
                 <option>
                     <name>RTConfigPath2</name>
-                    <state>$TOOLKIT_DIR$\INC\c\DLib_Config_Full.h</state>
+                    <state>$TOOLKIT_DIR$\inc\c\DLib_Config_Full.h</state>
                 </option>
                 <option>
                     <name>GBECoreSlave</name>
@@ -2275,7 +2275,7 @@
                 </option>
                 <option>
                     <name>DSPExtension</name>
-                    <state>0</state>
+                    <state>1</state>
                 </option>
                 <option>
                     <name>TrustZone</name>
@@ -2432,6 +2432,7 @@
                     <state>$PROJ_DIR$\..\..\Firmware\GD32F30x_standard_peripheral\Include</state>
                     <state>$PROJ_DIR$\..\..\Utilities</state>
                     <state>$PROJ_DIR$\..</state>
+                    <state>E:\project\project_GD32F303C\Linkplay-1\GD32F303C_20220706\Tympany\driver</state>
                 </option>
                 <option>
                     <name>CCStdIncCheck</name>
@@ -3077,7 +3078,7 @@
                 </option>
                 <option>
                     <name>IlinkTrustzoneImportLibraryOut</name>
-                    <state>###Unitialized###</state>
+                    <state>Project_import_lib.o</state>
                 </option>
                 <option>
                     <name>OILinkExtraOption</name>
@@ -3145,6 +3146,15 @@
     </configuration>
     <group>
         <name>Application</name>
+        <group>
+            <name>Tymphany_Module</name>
+            <file>
+                <name>$PROJ_DIR$\..\..\Tympany\driver\spi_drv.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\Tympany\driver\spi_drv.h</name>
+            </file>
+        </group>
         <file>
             <name>$PROJ_DIR$\..\gd32f30x_it.c</name>
         </file>

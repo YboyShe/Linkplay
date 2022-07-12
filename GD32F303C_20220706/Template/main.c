@@ -41,10 +41,10 @@ OF SUCH DAMAGE.
 #include "main.h"
 #include "gd32f307c_eval.h"
 
-
+#include "spi_drv.h"
 #define arraysize                  10
-#define SET_SPI0_NSS_HIGH          gpio_bit_set(GPIOA,GPIO_PIN_8);
-#define SET_SPI0_NSS_LOW           gpio_bit_reset(GPIOA,GPIO_PIN_8);
+#define SET_SPI0_NSS_HIGH          gpio_bit_set(GPIOB,GPIO_PIN_12);
+#define SET_SPI0_NSS_LOW           gpio_bit_reset(GPIOB,GPIO_PIN_12);
 #define I2C0_OWN_ADDRESS7          0x72
 #define I2C0_SLAVE_ADDRESS7        0x82
 
@@ -53,10 +53,10 @@ OF SUCH DAMAGE.
 #define ADC_GPIO_PORT              GPIOA
 #define ADC_GPIO_PIN               GPIO_PIN_0
 
-uint8_t spi0_send_array[arraysize] = {0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xA8, 0xA9, 0xAA};
-uint8_t spi2_send_array[arraysize] = {0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xB8, 0xB9, 0xBA};
-uint8_t spi0_receive_array[arraysize];
-uint8_t spi2_receive_array[arraysize];
+//uint8_t spi0_send_array[arraysize] = {0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xA8, 0xA9, 0xAA};
+//uint8_t spi2_send_array[arraysize] = {0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xB8, 0xB9, 0xBA};
+//uint8_t spi0_receive_array[arraysize];
+//uint8_t spi2_receive_array[arraysize];
 
 uint8_t i2c_transmitter[16];
 
@@ -152,17 +152,20 @@ int main(void)
     gd_eval_com_init(EVAL_COM0);
     gd_eval_com_init(EVAL_COM1);
     /* configure the tamper key */
-    gd_eval_key_init(KEY_WAKEUP, KEY_MODE_EXTI);
+//    gd_eval_key_init(KEY_WAKEUP, KEY_MODE_EXTI);
     /* peripheral clock enable */
     rcu_config();
     /* GPIO config */
     gpio_config();
     /* DMA config */
-    dma_config();
+ //   dma_config();
     /* SPI config */
-    spi_config();
+ //   spi_config();
+    SpiDrv_Init();
+    spi_disable(SPI1);
+    spi_disable(SPI2);
 	
-    i2c_config();
+//    i2c_config();
     adc_config();
     timer_config();
 	
@@ -209,27 +212,28 @@ int main(void)
 
     /* SPI enable */
     spi_enable(SPI2);
-    spi_enable(SPI0);
+    spi_enable(SPI1);
 
     /* DMA channel enable */
-    dma_channel_enable(DMA0, DMA_CH1);
-    dma_channel_enable(DMA0, DMA_CH2);
+    dma_channel_enable(DMA0, DMA_CH3);
+    dma_channel_enable(DMA0, DMA_CH4);
     dma_channel_enable(DMA1, DMA_CH0);
     dma_channel_enable(DMA1, DMA_CH1);
 
     SET_SPI0_NSS_LOW
 
     /* SPI DMA enable */
-    spi_dma_enable(SPI2, SPI_DMA_TRANSMIT);
     spi_dma_enable(SPI2, SPI_DMA_RECEIVE);
-    spi_dma_enable(SPI0, SPI_DMA_TRANSMIT);
-    spi_dma_enable(SPI0, SPI_DMA_RECEIVE);
+    spi_dma_enable(SPI1, SPI_DMA_RECEIVE);
+    spi_dma_enable(SPI1, SPI_DMA_TRANSMIT);
+    spi_dma_enable(SPI2, SPI_DMA_TRANSMIT);    
 
     /* wait dma transmit complete */
-    while(!dma_flag_get(DMA0,DMA_CH2, DMA_INTF_FTFIF));
-    while(!dma_flag_get(DMA1,DMA_CH1, DMA_INTF_FTFIF));
+    while(!dma_flag_get(DMA0,DMA_CH4, DMA_INTF_FTFIF));
+    
     while(!dma_flag_get(DMA1,DMA_CH0, DMA_INTF_FTFIF));
-    while(!dma_flag_get(DMA0,DMA_CH1, DMA_INTF_FTFIF));
+    while(!dma_flag_get(DMA1,DMA_CH1, DMA_INTF_FTFIF));
+    while(!dma_flag_get(DMA0,DMA_CH3, DMA_INTF_FTFIF));
 
     SET_SPI0_NSS_HIGH
 
@@ -238,7 +242,7 @@ int main(void)
     for(i=0; i<16; i++){
         i2c_transmitter[i]=i+0x80;
     }
-
+#if 0
     /* wait until I2C bus is idle */
     while(i2c_flag_get(I2C0, I2C_FLAG_I2CBSY));
     /* send a start condition to I2C bus */
@@ -264,7 +268,7 @@ int main(void)
     i2c_stop_on_bus(I2C0);
     /* wait until stop condition generate */ 
     while(I2C_CTL0(I2C0)&0x0200);
-
+#endif
 
 
     adc_software_trigger_enable(ADC1, ADC_REGULAR_CHANNEL);
@@ -317,16 +321,21 @@ void rcu_config(void)
 void gpio_config(void)
 {
     /* SPI0 GPIO config: SCK/PA5, MISO/PA6, MOSI/PA7 */
-    gpio_init(GPIOA, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, GPIO_PIN_5 | GPIO_PIN_7);
-    gpio_init(GPIOA, GPIO_MODE_IN_FLOATING, GPIO_OSPEED_50MHZ, GPIO_PIN_6);
-    /* PA3 as NSS */
-    gpio_init(GPIOA, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, GPIO_PIN_8);
+    // gpio_init(GPIOA, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, GPIO_PIN_5 | GPIO_PIN_7);
+    // gpio_init(GPIOA, GPIO_MODE_IN_FLOATING, GPIO_OSPEED_50MHZ, GPIO_PIN_6);
+    // /* PA3 as NSS */
+    // gpio_init(GPIOA, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, GPIO_PIN_8);
 
-    gpio_pin_remap_config(GPIO_SPI2_REMAP, ENABLE);
-    /* SPI1 GPIO config: NSS/PA15, SCK/PB3, MISO/PB4, MOSI/PB5 */
-    gpio_init(GPIOB, GPIO_MODE_IN_FLOATING, GPIO_OSPEED_50MHZ, GPIO_PIN_3 | GPIO_PIN_5);
-    gpio_init(GPIOB, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, GPIO_PIN_4);
-    gpio_init(GPIOA, GPIO_MODE_IN_FLOATING, GPIO_OSPEED_50MHZ, GPIO_PIN_15);
+    /* SPI1 GPIO config: NSS/PB12, SCK/PB13, MISO/PB14, MOSI/PB15 */
+    // gpio_init(GPIOB, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, GPIO_PIN_13 | GPIO_PIN_15);
+    // gpio_init(GPIOB, GPIO_MODE_IN_FLOATING, GPIO_OSPEED_50MHZ, GPIO_PIN_14);
+    // gpio_init(GPIOB, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, GPIO_PIN_12);
+
+    // //gpio_pin_remap_config(GPIO_SPI2_REMAP, ENABLE);
+    // /* SPI2 GPIO config: NSS/PA15, SCK/PB3, MISO/PB4, MOSI/PB5 */
+    // gpio_init(GPIOB, GPIO_MODE_IN_FLOATING, GPIO_OSPEED_50MHZ, GPIO_PIN_3 | GPIO_PIN_5);
+    // gpio_init(GPIOB, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, GPIO_PIN_4);
+    // gpio_init(GPIOA, GPIO_MODE_IN_FLOATING, GPIO_OSPEED_50MHZ, GPIO_PIN_15);
     /* connect PB6 to I2C0_SCL */
     /* connect PB7 to I2C0_SDA */
     gpio_init(GPIOB, GPIO_MODE_AF_OD, GPIO_OSPEED_50MHZ, GPIO_PIN_6 | GPIO_PIN_7);
@@ -334,7 +343,7 @@ void gpio_config(void)
     gpio_init(ADC_GPIO_PORT, GPIO_MODE_AIN, GPIO_OSPEED_MAX, ADC_GPIO_PIN);
 	
 	/* LED GPIO config */
-    gpio_init(GPIOA, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, GPIO_PIN_12);
+//    gpio_init(GPIOA, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, GPIO_PIN_12);
 }
 
 /*!
@@ -343,59 +352,62 @@ void gpio_config(void)
     \param[out] none
     \retval     none
 */
-void dma_config(void)
-{
-    dma_parameter_struct dma_init_struct;
+// void dma_config(void)
+// {
+//     dma_parameter_struct dma_init_struct;
     
-    /* SPI0 transmit dma config:DMA0-DMA_CH2  */
-    dma_deinit(DMA0, DMA_CH2);
-    dma_init_struct.periph_addr  = (uint32_t)&SPI_DATA(SPI0);
-    dma_init_struct.memory_addr  = (uint32_t)spi0_send_array;
-    dma_init_struct.direction    = DMA_MEMORY_TO_PERIPHERAL;
-    dma_init_struct.memory_width = DMA_MEMORY_WIDTH_8BIT;
-    dma_init_struct.periph_width = DMA_PERIPHERAL_WIDTH_8BIT;
-    dma_init_struct.priority     = DMA_PRIORITY_LOW;
-    dma_init_struct.number       = arraysize;
-    dma_init_struct.periph_inc   = DMA_PERIPH_INCREASE_DISABLE;
-    dma_init_struct.memory_inc   = DMA_MEMORY_INCREASE_ENABLE;
-    dma_init(DMA0, DMA_CH2, &dma_init_struct);
-    /* configure DMA mode */
-    dma_circulation_disable(DMA0, DMA_CH2);
-    dma_memory_to_memory_disable(DMA0, DMA_CH2);
+//     /* SPI0 transmit dma config:DMA0-DMA_CH2  */
+//     dma_deinit(DMA0, DMA_CH4);
+//     dma_init_struct.periph_addr  = (uint32_t)&SPI_DATA(SPI1);
+//     dma_init_struct.memory_addr  = (uint32_t)spi0_send_array;
+//     dma_init_struct.direction    = DMA_MEMORY_TO_PERIPHERAL;
+//     dma_init_struct.memory_width = DMA_MEMORY_WIDTH_8BIT;
+//     dma_init_struct.periph_width = DMA_PERIPHERAL_WIDTH_8BIT;
+//     dma_init_struct.priority     = DMA_PRIORITY_MEDIUM;
+//     dma_init_struct.number       = arraysize;
+//     dma_init_struct.periph_inc   = DMA_PERIPH_INCREASE_DISABLE;
+//     dma_init_struct.memory_inc   = DMA_MEMORY_INCREASE_ENABLE;
+//     dma_init(DMA0, DMA_CH4, &dma_init_struct);
+//     /* configure DMA mode */
+//     dma_circulation_disable(DMA0, DMA_CH4);
+//     dma_memory_to_memory_disable(DMA0, DMA_CH4);
+//     dma_channel_disable(DMA0, DMA_CH4);
 
-    /* SPI0 receive dma config:DMA0-DMA_CH1  */
-    dma_deinit(DMA0, DMA_CH1);
-    dma_init_struct.periph_addr  = (uint32_t)&SPI_DATA(SPI0);
-    dma_init_struct.memory_addr  = (uint32_t)spi0_receive_array;
-    dma_init_struct.direction    = DMA_PERIPHERAL_TO_MEMORY;
-    dma_init_struct.priority     = DMA_PRIORITY_HIGH;
-    dma_init(DMA0, DMA_CH1, &dma_init_struct);
-    /* configure DMA mode */
-    dma_circulation_disable(DMA0, DMA_CH1);
-    dma_memory_to_memory_disable(DMA0, DMA_CH1);
+//     /* SPI0 receive dma config:DMA0-DMA_CH1  */
+//     dma_deinit(DMA0, DMA_CH3);
+//     dma_init_struct.periph_addr  = (uint32_t)&SPI_DATA(SPI1);
+//     dma_init_struct.memory_addr  = (uint32_t)spi0_receive_array;
+//     dma_init_struct.direction    = DMA_PERIPHERAL_TO_MEMORY;
+//     dma_init_struct.priority     = DMA_PRIORITY_ULTRA_HIGH;
+//     dma_init(DMA0, DMA_CH3, &dma_init_struct);
+//     /* configure DMA mode */
+//     dma_circulation_disable(DMA0, DMA_CH3);
+//     dma_memory_to_memory_disable(DMA0, DMA_CH3);
+//     dma_channel_disable(DMA0, DMA_CH3);
 
-    /* SPI2 transmit dma config:DMA1,DMA_CH1  */
-    dma_deinit(DMA1, DMA_CH1);
-    dma_init_struct.periph_addr  = (uint32_t)&SPI_DATA(SPI2);
-    dma_init_struct.memory_addr  = (uint32_t)spi2_send_array;
-    dma_init_struct.direction    = DMA_MEMORY_TO_PERIPHERAL;
-    dma_init_struct.priority     = DMA_PRIORITY_MEDIUM;
-    dma_init(DMA1, DMA_CH1, &dma_init_struct);
-    /* configure DMA mode */
-    dma_circulation_disable(DMA1, DMA_CH4);
-    dma_memory_to_memory_disable(DMA1, DMA_CH4);
-
-    /* SPI2 receive dma config:DMA1,DMA_CH0  */
-    dma_deinit(DMA1, DMA_CH0);
-    dma_init_struct.periph_addr  = (uint32_t)&SPI_DATA(SPI2);
-    dma_init_struct.memory_addr  = (uint32_t)spi2_receive_array;
-    dma_init_struct.direction    = DMA_PERIPHERAL_TO_MEMORY;
-    dma_init_struct.priority     = DMA_PRIORITY_ULTRA_HIGH;
-    dma_init(DMA1, DMA_CH0, &dma_init_struct);
-    /* configure DMA mode */
-    dma_circulation_disable(DMA1, DMA_CH0);
-    dma_memory_to_memory_disable(DMA1, DMA_CH0);
-}
+//     /* SPI2 transmit dma config:DMA1,DMA_CH1  */
+//     dma_deinit(DMA1, DMA_CH1);
+//     dma_init_struct.periph_addr  = (uint32_t)&SPI_DATA(SPI2);
+//     dma_init_struct.memory_addr  = (uint32_t)spi2_send_array;
+//     dma_init_struct.direction    = DMA_MEMORY_TO_PERIPHERAL;
+//     dma_init_struct.priority     = DMA_PRIORITY_MEDIUM;
+//     dma_init(DMA1, DMA_CH1, &dma_init_struct);
+//     /* configure DMA mode */
+//     dma_circulation_disable(DMA1, DMA_CH1);
+//     dma_memory_to_memory_disable(DMA1, DMA_CH1);
+//     dma_channel_disable(DMA0, DMA_CH1);
+//     /* SPI2 receive dma config:DMA1,DMA_CH0  */
+//     dma_deinit(DMA1, DMA_CH0);
+//     dma_init_struct.periph_addr  = (uint32_t)&SPI_DATA(SPI2);
+//     dma_init_struct.memory_addr  = (uint32_t)spi2_receive_array;
+//     dma_init_struct.direction    = DMA_PERIPHERAL_TO_MEMORY;
+//     dma_init_struct.priority     = DMA_PRIORITY_ULTRA_HIGH;
+//     dma_init(DMA1, DMA_CH0, &dma_init_struct);
+//     /* configure DMA mode */
+//     dma_circulation_disable(DMA1, DMA_CH0);
+//     dma_memory_to_memory_disable(DMA1, DMA_CH0);
+//     dma_channel_disable(DMA0, DMA_CH0);
+// }
 
 /*!
     \brief      configure the SPI peripheral
@@ -403,25 +415,25 @@ void dma_config(void)
     \param[out] none
     \retval     none
 */
-void spi_config(void)
-{
-    spi_parameter_struct spi_init_struct;
+// void spi_config(void)
+// {
+//     spi_parameter_struct spi_init_struct;
 
-    /* SPI0 parameter config */
-    spi_init_struct.trans_mode           = SPI_TRANSMODE_FULLDUPLEX;
-    spi_init_struct.device_mode          = SPI_MASTER;
-    spi_init_struct.frame_size           = SPI_FRAMESIZE_8BIT;
-    spi_init_struct.clock_polarity_phase = SPI_CK_PL_LOW_PH_2EDGE;
-    spi_init_struct.nss                  = SPI_NSS_SOFT;
-    spi_init_struct.prescale             = SPI_PSC_256;
-    spi_init_struct.endian               = SPI_ENDIAN_MSB;
-    spi_init(SPI0, &spi_init_struct);
+//     /* SPI0 parameter config */
+//     spi_init_struct.trans_mode           = SPI_TRANSMODE_FULLDUPLEX;
+//     spi_init_struct.device_mode          = SPI_MASTER;
+//     spi_init_struct.frame_size           = SPI_FRAMESIZE_8BIT;
+//     spi_init_struct.clock_polarity_phase = SPI_CK_PL_LOW_PH_2EDGE;
+//     spi_init_struct.nss                  = SPI_NSS_SOFT;
+//     spi_init_struct.prescale             = SPI_PSC_256;
+//     spi_init_struct.endian               = SPI_ENDIAN_MSB;
+//     spi_init(SPI1, &spi_init_struct);
 
-    /* SPI2 parameter config */
-    spi_init_struct.device_mode = SPI_SLAVE;
-    spi_init_struct.nss         = SPI_NSS_HARD;
-    spi_init(SPI1, &spi_init_struct);
-}
+//     /* SPI2 parameter config */
+//     spi_init_struct.device_mode = SPI_SLAVE;
+//     spi_init_struct.nss         = SPI_NSS_HARD;
+//     spi_init(SPI2, &spi_init_struct);
+// }
 
 /*!
     \brief      cofigure the I2C0 interfaces

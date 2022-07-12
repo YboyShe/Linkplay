@@ -4263,6 +4263,15 @@
     </configuration>
     <group>
         <name>Application</name>
+        <group>
+            <name>Tymphany_Module</name>
+            <file>
+                <name>$PROJ_DIR$\..\..\Tympany\driver\spi_drv.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\Tympany\driver\spi_drv.h</name>
+            </file>
+        </group>
         <file>
             <name>$PROJ_DIR$\..\gd32f30x_it.c</name>
         </file>
